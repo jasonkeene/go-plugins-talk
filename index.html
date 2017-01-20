@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Go 1.8 Plugins</title>
+<meta charset="utf-8">
+<style>
+
+@import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+@import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+@import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+body {
+    font-family: 'Droid Serif';
+}
+h1, h2, h3 {
+    font-family: 'Yanone Kaffeesatz';
+    font-weight: normal;
+}
+.remark-code, .remark-inline-code {
+    font-family: 'Ubuntu Mono';
+}
+table {
+    margin: 25px;
+}
+table td {
+    padding: 5px;
+}
+table td i {
+    color: red;
+}
+blockquote {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  margin-left: 50px;
+  padding-left: 15px;
+  border-left: 3px solid #ccc;
+}
+
+</style>
+</head>
+<body>
+<textarea id="source">
+
+class: center, middle
+
+# &#x1f50c; Go 1.8 Plugin Support
+
+---
+
+## What are plugins:
+
+Plugins are a way to add functionality to an existing program.
+
+---
+
+## Existing mechanisms for plugins with Go
+
+ - Add the plugin source to an existing Go program and recompile.
+ - Spawn external process and communicate over some sort of RPC.
+   - https://github.com/hashicorp/go-plugin
+   - https://github.com/natefinch/pie
+ - Using cgo to call into C and have gcc/clang dynamically link (I've only
+   ever done this with linking against other C libs, not Go code).
+
+---
+
+# What do 1.8 plugins add to this picture?
+
+ - 1.8 adds a build mode to compile go source code into shared objects.
+ - 1.8 adds a `plugin` package that uses cgo to call dlopen/dlsym to load these
+   shared objects into memory and reference them via `interface{}`.
+ - For 1.8rc1 this only works on linux.
+   - Darwin support was removed in beta2 and is not planned to ship in 1.8.
+   - Windows/BSD are currently not supported.
+ - Plugins are initialized when first calling `plugin.Open`.
+ - Any main funcs defined in the plugin are not ran.
+ - You need to import "C" for the symbol table.
+
+---
+
+class: center, middle
+
+# Demo Time
+
+---
+
+## Why use plugins?
+
+ - Packaging is simpler. You don't have to build binaries with every
+   combination of optional features.
+ - Hotloading of code. There is no need to restart the process to get new code
+   deployed.
+ - Save on compilation time for dependencies that rarely change. It would be
+   awesome to have a wrapper around sqlite that used the `plugin` package while
+   in development to cut down on compilation times.
+ - Performance. There is not a measurable difference in calling plugin code vs
+   other statically linked code, other than the initial hit of loading the code
+   from disk.
+ - You can generate wrappers around the `plugin` package calls so you don't
+   have to deal with `interface{}`.
+   - https://github.com/wendigo/go-bind-plugin
+
+---
+
+## Why not use plugins?
+
+ - Only supported on linux.
+ - Cross compilation doesn't appear to work from what I can tell. E.g.
+   targeting linux from macOS.
+ - Statically compiled artifacts are easier to reason about when deploying.
+ - The shared objects are quite large as they contain the entire go runtime
+   for each plugin.
+
+---
+
+## Experiment
+
+- Hotloading code
+
+</textarea>
+<script src="https://gnab.github.io/remark/downloads/remark-latest.min.js">
+</script>
+<script>
+var slideshow = remark.create(),
+    strikeEls = document.querySelectorAll('.strike'),
+    someofEl = document.getElementById('someof');
+function noAsm() {
+    for (var i = 0; i < strikeEls.length; i++) {
+        strikeEls[i].style.textDecoration = 'line-through';
+    }
+    someofEl.style.display = 'inline';
+}
+document.getElementById('slide-synchronizing').onclick = noAsm;
+</script>
+</body>
+</html>
